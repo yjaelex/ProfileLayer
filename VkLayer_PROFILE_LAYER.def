@@ -1,0 +1,6 @@
+LIBRARY VkLayer_PROFILE_LAYER
+EXPORTS
+vkGetInstanceProcAddr
+vkGetDeviceProcAddr
+vkEnumerateInstanceLayerProperties
+vkEnumerateInstanceExtensionProperties
