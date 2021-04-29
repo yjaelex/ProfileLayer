@@ -181,6 +181,16 @@ class layer_factory;
 std::vector<layer_factory *> global_interceptor_list;
 debug_report_data *vlf_report_data = VK_NULL_HANDLE;
 
+layer_factory * GetGlobalObject(layer_factory *obj)
+{
+    static layer_factory *g_Obj = nullptr;
+    if (!g_Obj)
+    {
+        g_Obj = obj;
+    }
+    return g_Obj;
+}
+
 #include "layer_factory.h"
 
 struct instance_layer_data {
@@ -294,6 +304,11 @@ VKAPI_ATTR VkResult VKAPI_CALL CreateInstance(const VkInstanceCreateInfo *pCreat
     PFN_vkCreateInstance fpCreateInstance = (PFN_vkCreateInstance)fpGetInstanceProcAddr(NULL, "vkCreateInstance");
     if (fpCreateInstance == NULL) return VK_ERROR_INITIALIZATION_FAILED;
     chain_info->u.pLayerInfo = chain_info->u.pLayerInfo->pNext;
+
+    if (global_interceptor_list.empty())
+    {
+        global_interceptor_list.emplace_back(GetGlobalObject(NULL));
+    }
 
     // Init dispatch array and call registration functions
     for (auto intercept : global_interceptor_list) {
@@ -546,6 +561,7 @@ VK_LAYER_EXPORT VKAPI_ATTR VkResult VKAPI_CALL vkNegotiateLoaderLayerInterfaceVe
             write('#include <unordered_map>\n', file=self.outFile)
             write('class layer_factory;', file=self.outFile)
             write('extern std::vector<layer_factory *> global_interceptor_list;', file=self.outFile)
+            write('extern layer_factory * GetGlobalObject(layer_factory *obj);\n', file=self.outFile)
             write('extern debug_report_data *vlf_report_data;\n', file=self.outFile)
             write('namespace vulkan_layer_factory {\n', file=self.outFile)
         else:
@@ -557,6 +573,7 @@ VK_LAYER_EXPORT VKAPI_ATTR VkResult VKAPI_CALL vkNegotiateLoaderLayerInterfaceVe
         self.layer_factory += '    public:\n'
         self.layer_factory += '        layer_factory() {\n'
         self.layer_factory += '            global_interceptor_list.emplace_back(this);\n'
+        self.layer_factory += '            GetGlobalObject(this);\n'
         self.layer_factory += '        };\n'
         self.layer_factory += '\n'
         self.layer_factory += '        std::string layer_name = "VLF";\n'

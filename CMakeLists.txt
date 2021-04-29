@@ -140,7 +140,7 @@ if (WIN32)
     # The changed behavior is that constructor initializers are now fixed to clear the struct members.
     add_compile_options("$<$<AND:$<CXX_COMPILER_ID:MSVC>,$<VERSION_LESS:$<CXX_COMPILER_VERSION>,19>>:/wd4351>")
 else()
-    set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -Wpointer-arith -Wno-unused-function -Wno-sign-compare")
+    set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -std=c++11 -Wpointer-arith -Wno-unused-function -Wno-sign-compare")
     set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wpointer-arith -Wno-unused-function -Wno-sign-compare")
 endif()
 
@@ -149,40 +149,38 @@ run_vulkantools_vk_xml_generate(layer_factory_generator.py layer_factory.cpp)
 add_custom_target(generate_vlf DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/layer_factory.cpp ${CMAKE_CURRENT_BINARY_DIR}/layer_factory.h)
 #set_target_properties(generate_vlf PROPERTIES FOLDER ${VULKANTOOLS_TARGET_FOLDER})
 
-# Generates a list of subdirectories in a directory.  Used to pick up factory layers and interceptors
-MACRO(SUBDIRLIST result curdir)
-  FILE(GLOB children RELATIVE ${curdir} ${curdir}/*)
-  SET(dirlist "")
-  FOREACH(child ${children})
-    IF(IS_DIRECTORY ${curdir}/${child})
-      LIST(APPEND dirlist ${child})
-    ENDIF()
-  ENDFOREACH()
-  SET(${result} ${dirlist})
-ENDMACRO()
-
 # Paths for the layer factory json template and the destination for factory layer json files
 set (JSON_TEMPLATE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/layer_factory.json.in)
 if (WIN32)
     set (JSON_DEST_PATH ${CMAKE_CURRENT_BINARY_DIR})
+    set (JSON_TARGET_NAME "./VkLayer_${PROJ_NAME}.dll")
 else()
     set (JSON_DEST_PATH ${CMAKE_CURRENT_BINARY_DIR})
+    set (JSON_TARGET_NAME "./libVkLayer_${PROJ_NAME}.so")
 endif()
 
-set (CMAKE_LAYER_FACTORY_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR})
-SUBDIRLIST(ST_SUBDIRS ${CMAKE_LAYER_FACTORY_SOURCE_DIR})
-
-# json file creation
+# Edit json template and copy to build\layers dir at cmake time
+file(READ "${JSON_TEMPLATE_PATH}" json_file_template)
+string(REPLACE "@RELATIVE_LAYER_BINARY@" "${JSON_TARGET_NAME}" target_json_file "${json_file_template}")
+#string(REPLACE "@VK_VERSION@" "${JSON_VK_VERSION}" target_json_file2 "${target_json_file}")
+file(TO_NATIVE_PATH ${JSON_DEST_PATH}/VkLayer_${PROJ_NAME}.json dst_json)
+file(WRITE ${dst_json} ${target_json_file})
 
 file(GLOB BASE_SRC  ${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp  ${CMAKE_CURRENT_SOURCE_DIR}/src/*.hpp  ${CMAKE_CURRENT_SOURCE_DIR}/src/*.h)
 file(GLOB BASE_HEADERS  ${CMAKE_CURRENT_SOURCE_DIR}/src/*.hpp  ${CMAKE_CURRENT_SOURCE_DIR}/src/*.h)
 
 message(STATUS "BASE_SRC = ${BASE_SRC}")
 
-file(GLOB ValidationLayers_Src  ${Vulkan-ValidationLayers_INCLUDE_DIR}/*.c ${Vulkan-ValidationLayers_INCLUDE_DIR}/*.h)
+file(GLOB ValidationLayers_C  ${Vulkan-ValidationLayers_INCLUDE_DIR}/*.c ${Vulkan-ValidationLayers_INCLUDE_DIR}/*.h)
+set(ValidationLayers_CPP ${Vulkan-ValidationLayers_INCLUDE_DIR}/vk_layer_utils.cpp ${Vulkan-ValidationLayers_INCLUDE_DIR}/vk_layer_config.cpp)
+set(ValidationLayers_Src ${ValidationLayers_CPP} ${ValidationLayers_C})
 message(STATUS "ValidationLayers_Src = ${ValidationLayers_Src}")
 
 add_library(VkLayer_${PROJ_NAME} SHARED ${BASE_SRC} ${ValidationLayers_Src} ${CMAKE_CURRENT_BINARY_DIR}/layer_factory.cpp ${CMAKE_CURRENT_BINARY_DIR}/layer_factory.h VkLayer_${PROJ_NAME}.def)
 set_source_files_properties(VkLayer_${PROJ_NAME}.def PROPERTIES HEADER_FILE_ONLY TRUE)
 target_link_Libraries(VkLayer_${PROJ_NAME} ${VkLayer_utils_LIBRARY})
 target_include_directories(VkLayer_${PROJ_NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src ${Vulkan_INCLUDE_DIR})
+
+if(UNIX)
+    set_target_properties(VkLayer_${PROJ_NAME} PROPERTIES LINK_FLAGS "-Wl,-Bsymbolic,--exclude-libs,ALL")
+endif()
