@@ -48,14 +48,14 @@ void Profiler::DumpLog(const char *format, ...)
     va_end(ap);
 
     //m_logMutex.lock();
-    // m_ssLog << buffer;
-    // if ((m_ssLog.gcount() >= 1 * 1024 * 1024) ||
-    //     ((m_nFrame % display_rate) == 0))
-    // {
-    //     m_logFile << m_ssLog.str();
-    //     m_logFile.flush();
-    //     m_ssLog.str(std::string());
-    // }
+    m_ssLog << buffer;
+    if ((m_ssLog.gcount() >= 1 * 1024 * 1024) ||
+        ((m_nFrame % display_rate) == 0))
+    {
+        m_logFile << m_ssLog.str();
+        m_logFile.flush();
+        m_ssLog.str(std::string());
+    }
     //m_logMutex.unlock();
     printf("[VkLayer_PROFILE_LAYER] - %s", buffer);
 }

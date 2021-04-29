@@ -20,6 +20,8 @@
 #pragma once
 
 #include <unordered_map>
+#include <fstream>
+#include <mutex>
 #include "vulkan/vulkan.h"
 #include "vk_layer_logging.h"
 #include "layer_factory.h"
@@ -43,6 +45,17 @@ class Profiler : public layer_factory {
 
         memset(&m_cpuTimeList[0], 0, sizeof(m_cpuTimeList));
         m_frequency = (float)(GetPerfFrequency());
+
+#ifdef _WIN32
+        m_logFile.open("DumpLogFile.txt", std::fstream::out | std::fstream::trunc);
+#else
+        m_logFile.open("/tmp/DumpLogFile.txt", std::fstream::out | std::fstream::trunc);
+#endif
+
+        if (!m_logFile.is_open())
+        {
+            Warning(std::string("Fail to open Dump file!"));
+        }
     };
 
     void PreCallApiFunction(const char *api_name);
@@ -74,12 +87,16 @@ class Profiler : public layer_factory {
         NumQuery             // Total number of query indices
     };
 
-    uint32_t m_nFrame;
-    int64_t  m_performanceCounters[NumQuery];
-    float  m_frequency;                                 // Frequency of performance counters
-    float  m_cpuTimeList[TimeCount];                    // List of times between frames
-    uint32_t m_cpuTimeSamples;                            // Number of valid entried in m_cpuTimeList
-    uint32_t m_cpuTimeIndex;                              // Current index into list of times
-    float  m_cpuTimeSum;                                // Current sum of all times
-    uint64 m_optionFlag;
+    uint32_t            m_nFrame;
+    int64_t             m_performanceCounters[NumQuery];
+    float               m_frequency;                                 // Frequency of performance counters
+    float               m_cpuTimeList[TimeCount];                    // List of times between frames
+    uint32_t            m_cpuTimeSamples;                            // Number of valid entried in m_cpuTimeList
+    uint32_t            m_cpuTimeIndex;                              // Current index into list of times
+    float               m_cpuTimeSum;                                // Current sum of all times
+    uint64              m_optionFlag;
+
+    std::stringstream   m_ssLog;
+    std::fstream        m_logFile;
+    std::mutex          m_logMutex;
 };
