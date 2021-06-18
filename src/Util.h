@@ -2,6 +2,7 @@
 
 #include "stdint.h"
 
+/*
 #ifndef max
 #define max(a,b)            (((a) > (b)) ? (a) : (b))
 #endif
@@ -9,6 +10,7 @@
 #ifndef min
 #define min(a,b)            (((a) < (b)) ? (a) : (b))
 #endif
+*/
 
 typedef int8_t   int8;    ///< 8-bit integer.
 typedef int16_t  int16;   ///< 16-bit integer.
